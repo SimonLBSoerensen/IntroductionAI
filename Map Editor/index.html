@@ -1,0 +1,293 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- HTML CODE -->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1600, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+
+    <script src="https://kit.fontawesome.com/e2941ca3bb.js"></script>
+    <link
+        rel="stylesheet"
+        href="../development-bundle/themes/redmond/jquery.ui.all.css"
+    />
+</head>
+<body>
+
+    
+<div id="content" oncontextmenu="return false;">
+    <canvas id="cBar"></canvas>
+    <canvas id="cMap"></canvas>
+</div>
+<div id="navbars">
+    <div id="uppernavbar">
+        <i onclick="mapPrompt()" id="icon" class="fas fa-paste fa-2x"></i>
+        <i onclick="solutionPrompt()" id="icon" class="fas fa-puzzle-piece fa-2x"></i>
+    </div>
+    <div id="lowernavbar">
+
+    </div>
+</div>
+
+</body>
+
+<style>
+    #cBar {
+        border-style:solid;
+        border-width: 1px;
+    }
+
+    #cMap {
+        border-style:solid;
+        border-width: 1px;
+    }
+
+    #navbars {
+        position:fixed;
+        right:0%;
+        top:0%;
+        border: thick black;
+        width:fit-content;
+    }
+
+    #uppernavbar {
+        border-style:solid;
+        border-width: 1px;
+        margin:auto;
+    }
+
+    #icon {
+        color: #000;
+        display: block; 
+        margin: 2px;
+    }
+
+</style>
+
+<!-- Font Awesome -->
+
+
+<!-- INCLUDING JS FILES -->
+
+<script src="utility.js"></script>
+<script src="tiles.js"></script>
+<script src="map.js"></script>
+
+<!--   ACTUAL JS CODE   -->
+
+<script>  
+    // ###################################
+    // ##  INITIAL VARIABLES/CONSTANTS  ##
+    // ###################################
+
+    debug = [];
+
+    // GRABBING HTML ELEMENTS
+    const content = document.getElementById("content"),
+        cMap = document.getElementById("cMap"),
+        cBar = document.getElementById("cBar");
+        
+    const ctxMap = cMap.getContext("2d"), 
+        ctxBar = cBar.getContext("2d");
+
+    const navigator = window.navigator;
+
+    // DEFINING TILES
+
+    const tFree = new DynamicTile('free',' ',0, 2, 0),
+        tWall = new Tile('wall','#',0, 1, 0),
+        tCan = new Tile('can','O',2, 1, 1),
+        tTarget = new Tile('target','X',1, 1, 3),
+        tRobot = new Tile('robot','P',2, 1, 4),
+        tSelected = new Tile('selected',' ',0, 0, 4),
+        tError = new Tile('error', '?', 0, 5, 5);
+
+    const tiles = [tFree, tWall, tCan, tTarget, tRobot];
+    
+    var selected = 0;
+
+    // MAP DIMENSIONS
+    const 
+        barHeight = 80,
+        gridsize = 80,
+        mapWidth = 15 * gridsize, 
+        mapHeight = 11 * gridsize;
+
+    content.style.width = mapWidth;
+    
+    cMap.width = mapWidth;
+    cMap.height = mapHeight;
+
+    cBar.width = mapWidth;
+    cBar.height = barHeight;
+
+    const mapLeft = cMap.offsetLeft,
+          mapTop = cMap.offsetTop;
+
+    const barLeft = cBar.offsetLeft,
+          barTop = cBar.offsetTop;
+    
+    var map = new TileMap(mapWidth/gridsize, mapHeight/gridsize, gridsize, 4, tFree, tError, ctxMap, tiles);
+
+    var brush = tFree;
+    
+    // SPRITE INFORMATION
+    var context = ctxMap;
+
+    var sprite = new Image();
+    sprite.src = "tileset.png";
+
+    if (!(debug == undefined) && debug.includes('init')) {
+        console.log([content, cMap, cBar]);
+        console.log([ctxMap, ctxBar]);
+        console.log(map.getSurroundings(0, 1));
+    }
+
+    // ################
+    // ## FUNCTIONS  ##
+    // ################
+
+    function drawBar() {
+        ctxBar.clearRect(0, 0, mapWidth, barHeight);
+        let i = 0;
+        for (const tile of tiles) {
+            let [sx, sy] = tile.getSprite();
+            ctxBar.drawImage(sprite, sx * gridsize, sy * gridsize, gridsize, gridsize, gridsize * i++, 0, gridsize, gridsize);
+        }
+        ctxBar.drawImage(sprite, 0 * gridsize, 4 * gridsize, gridsize, gridsize, gridsize * selected, 0, gridsize, gridsize);
+    }
+
+    sprite.onload = function() {
+        map.updateTiles(tFree);
+        drawBar();
+    }
+
+    function clickMap(x, y, button) {
+        switch(button) {
+            case 0: // Left-click
+            map.place(x, y, brush);
+            // TODO
+            break;
+
+            case 1: // Scrollwheel
+            brush = map.getTile(x,y);
+            // TODO
+            break;
+
+            case 2: // Right-click
+            console.log(map.getString());
+            //map.place(x, y, tWall);
+            // TODO
+            break;
+
+            default: // Default
+            break;
+        }
+    }
+
+    cMap.addEventListener('contextmenu', function(event) {
+        var x = Math.floor((event.pageX - mapLeft) / gridsize),
+            y = Math.floor((event.pageY - mapTop) / gridsize);
+
+        clickMap(x, y, 2);
+    }, false);
+
+    cMap.addEventListener('click', function(event) {
+        var x = Math.floor((event.pageX - mapLeft) / gridsize),
+            y = Math.floor((event.pageY - mapTop) / gridsize);
+
+        clickMap(x, y, event.button);
+    }, false);
+
+    cBar.addEventListener('click', function(event) {
+        var x = Math.floor((event.pageX - barLeft) / gridsize),
+            y = Math.floor((event.pageY - barTop) / gridsize);
+ 
+        // TODO
+        selected = x;
+        drawBar();
+        brush = tiles[x];
+    }, false);
+
+    document.addEventListener('keypress', function(event) {
+        switch(event.code) {
+            case 'KeyR': // ROTATE
+                tiles[selected].rotate();
+                drawBar();
+                break;
+
+            case 'KeyC':
+                console.log(map.getString());
+                document.execCommand('copy');   
+                break;
+
+            case 'KeyW':
+                map.move('N');
+                break;
+
+            case 'KeyA':
+                map.move('W');
+                break;
+
+            case 'KeyS':
+                map.move('S');
+                break;
+
+            case 'KeyD':
+                map.move('E');
+                break;
+
+            case 'KeyB':
+                if (solution.length > 0) map.move(solution.pop());
+                break;
+
+            default:    
+
+                break;
+        }
+    });
+
+    document.addEventListener('copy', function (event) {
+        event.preventDefault();
+        if (event.clipboardData) {
+            event.clipboardData.setData('text/plain', map.getString());
+        } else if (window.clipboardData) {
+            window.clipboardData.setData('Text', map.getString());
+        }
+    });
+
+    // Interactions with user.
+
+    function mapPrompt() {
+        let s = prompt("Enter something.", map.getString())
+        console.log(s)
+        map.fromString(s);
+    }
+
+    let solution = []
+    function solutionPrompt() {
+        let solString = prompt("Enter solution.");
+        solution = JSON.parse(solString)['solution'];
+    }
+
+    function download(filename, text) {
+        var element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent("bush did 9/11."));
+        element.setAttribute('download', filename);
+
+        element.style.display = 'none';
+        document.body.appendChild(element);
+
+        element.click();
+
+        document.body.removeChild(element);
+    }
+
+</script>
+
+</html>
